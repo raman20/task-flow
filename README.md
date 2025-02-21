@@ -50,5 +50,6 @@ The project uses SQL migrations to manage database schema changes. The migration
    ```
 
 4. **Access the API**:
-   API gateway:     http://127.0.0.1:4000
-   Development Dashboard URL:  http://127.0.0.1:9400
+   - API gateway:     http://127.0.0.1:4000
+   - Development Dashboard URL:  http://127.0.0.1:9400 
+   - navigate to "Service Catalog" in Development Dashboard to see API documentation
