@@ -2,16 +2,6 @@
 
 This project is a task management system built using Encore and Go, following a microservices architecture. It allows users to create boards, manage tasks, and handle user authentication.
 
-## Table of Contents
-- [Problem Breakdown](#problem-breakdown)
-- [Design Decisions](#design-decisions)
-- [Architecture](#architecture)
-- [Services](#services)
-- [Database Migrations](#database-migrations)
-- [Instructions to Run the Service](#instructions-to-run-the-service)
-- [API Endpoints](#api-endpoints)
-- [License](#license)
-
 ## Problem Breakdown
 
 The task management system addresses the following problems:
@@ -45,8 +35,8 @@ The project uses SQL migrations to manage database schema changes. The migration
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/raman20/task-management-system.git
-   cd task-management-system
+   git clone https://github.com/raman20/task-flow.git
+   cd task-flow
    ```
 
 2. **Install Encore**:
