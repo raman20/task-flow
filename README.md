@@ -1,6 +1,6 @@
 # Task Management System
 
-This project is a task management system built using Encore and Go, following a microservices architecture. It allows users to create boards, manage tasks, and handle user authentication.
+This project is a task management system built using [Encore](https://encore.dev/go) and Go, following a microservices architecture. It allows users to create boards, manage tasks, and handle user authentication.
 
 ## Problem Breakdown
 
