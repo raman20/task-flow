@@ -200,15 +200,24 @@ func UpdateTask(ctx context.Context, taskID string, p *UpdateTaskParams) (*TaskR
 	}, nil
 }
 
-// ListTasksResponse represents a list of tasks for a board.
-type ListTasksResponse struct {
-	Tasks []TaskResponse `json:"tasks"`
+// ListTasksParams defines the query parameters for filtering and paginating tasks.
+type ListTasksParams struct {
+	Stage  string `query:"stage,omitempty"`    // Filter by stage: "To Do", "In Progress", "Done"
+	Limit  int    `query:"limit" default:"10"` // Number of tasks to return
+	Offset int    `query:"offset" default:"0"` // Number of tasks to skip
 }
 
-// ListTasks retrieves all tasks for a board, accessible to all board members.
+// ListTasksResponse represents a paginated list of tasks for a board.
+type ListTasksResponse struct {
+	Tasks []TaskResponse `json:"tasks"`
+	Total int            `json:"total"` // Total number of matching tasks
+}
+
+// ListTasks retrieves a paginated list of tasks for a board, optionally filtered by stage,
+// accessible to Admins and Members only.
 //
 //encore:api auth method=GET path=/board/:boardID/tasks
-func ListTasks(ctx context.Context, boardID string) (*ListTasksResponse, error) {
+func ListTasks(ctx context.Context, boardID string, p *ListTasksParams) (*ListTasksResponse, error) {
 	_, ok := auth.UserID()
 	if !ok {
 		return nil, errs.B().Code(errs.Unauthenticated).Msg("authentication required").Err()
@@ -221,13 +230,60 @@ func ListTasks(ctx context.Context, boardID string) (*ListTasksResponse, error) 
 	if !membership.IsMember {
 		return nil, errs.B().Code(errs.PermissionDenied).Msg("access denied: must be a board member to list tasks").Err()
 	}
+	if membership.Role == "Viewer" {
+		return nil, errs.B().Code(errs.PermissionDenied).Msg("access denied: only Admins and Members can list tasks").Err()
+	}
 
-	rows, err := taskDB.Query(ctx, `
+	if p.Stage != "" && p.Stage != "To Do" && p.Stage != "In Progress" && p.Stage != "Done" {
+		return nil, errs.B().Code(errs.InvalidArgument).Msg("stage must be 'To Do', 'In Progress', or 'Done'").Err()
+	}
+	if p.Limit <= 0 || p.Offset < 0 {
+		return nil, errs.B().Code(errs.InvalidArgument).Msg("limit must be positive and offset non-negative").Err()
+	}
+
+	// Count total tasks for pagination
+	var total int
+	countQuery := `
+        SELECT COUNT(*) FROM tasks
+        WHERE board_id = $1
+    `
+	if p.Stage != "" {
+		countQuery += " AND stage = $2"
+	}
+	countArgs := []any{boardID}
+	if p.Stage != "" {
+		countArgs = append(countArgs, p.Stage)
+	}
+	err = taskDB.QueryRow(ctx, countQuery, countArgs...).Scan(&total)
+	if err != nil {
+		return nil, errs.B().Code(errs.Internal).Msg("failed to count tasks").Cause(err).Err()
+	}
+
+	// Fetch paginated tasks
+	query := `
         SELECT id, board_id, title, description, created_by, assignee_id, stage, created_at, updated_at
         FROM tasks
         WHERE board_id = $1
-        ORDER BY created_at
-    `, boardID)
+    `
+	args := []any{boardID}
+	if p.Stage != "" {
+		query += " AND stage = $2"
+		args = append(args, p.Stage)
+	}
+	query += " ORDER BY created_at LIMIT $2 OFFSET $3"
+	if p.Stage == "" {
+		query = `
+            SELECT id, board_id, title, description, created_by, assignee_id, stage, created_at, updated_at
+            FROM tasks
+            WHERE board_id = $1
+            ORDER BY created_at LIMIT $2 OFFSET $3
+        `
+		args = append(args, p.Limit, p.Offset)
+	} else {
+		args = append(args, p.Limit, p.Offset)
+	}
+
+	rows, err := taskDB.Query(ctx, query, args...)
 	if err != nil {
 		return nil, errs.B().Code(errs.Internal).Msg("failed to fetch tasks").Cause(err).Err()
 	}
@@ -249,7 +305,10 @@ func ListTasks(ctx context.Context, boardID string) (*ListTasksResponse, error) 
 		return nil, errs.B().Code(errs.Internal).Msg("error reading tasks").Cause(err).Err()
 	}
 
-	return &ListTasksResponse{Tasks: tasks}, nil
+	return &ListTasksResponse{
+		Tasks: tasks,
+		Total: total,
+	}, nil
 }
 
 // DeleteTaskResponse represents the response when a task is deleted.
