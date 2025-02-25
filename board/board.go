@@ -20,12 +20,12 @@ var boardDB = sqldb.NewDatabase("boards", sqldb.DatabaseConfig{
 })
 
 // BoardDeletedEvent represents an event published when a board is deleted, used for
-// cascading deletes in other services (e.g., tasks).
+// cascading deletes in task service.
 type BoardDeletedEvent struct {
 	BoardID string `json:"board_id"`
 }
 
-// BoardDeletedTopic is a Pub/Sub topic for notifying subscribers (e.g., task service)
+// BoardDeletedTopic is a Pub/Sub topic for notifying task service
 // when a board is deleted.
 var BoardDeletedTopic = pubsub.NewTopic[*BoardDeletedEvent]("board-deleted", pubsub.TopicConfig{
 	DeliveryGuarantee: pubsub.AtLeastOnce,
@@ -33,17 +33,17 @@ var BoardDeletedTopic = pubsub.NewTopic[*BoardDeletedEvent]("board-deleted", pub
 
 // CreateBoardParams defines the input parameters for creating a new board.
 type CreateBoardParams struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`                  // Name of the board
+	Description string `json:"description,omitempty"` // Description of the board
 }
 
 // BoardResponse represents the response returned when a board is created or retrieved.
 type BoardResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	CreatedBy   string `json:"created_by"`
-	CreatedAt   string `json:"created_at"` // ISO 8601 string
+	ID          string `json:"id"`          // board id
+	Name        string `json:"name"`        // board name
+	Description string `json:"description"` // board description
+	CreatedBy   string `json:"created_by"`  // UID of board Owner
+	CreatedAt   string `json:"created_at"`  // Board creation time
 }
 
 // CreateBoard creates a new board and assigns the authenticated user as its Admin.
@@ -88,14 +88,14 @@ func CreateBoard(ctx context.Context, p *CreateBoardParams) (*BoardResponse, err
 
 // InviteUserParams defines the input parameters for inviting a user to a board.
 type InviteUserParams struct {
-	BoardID   string `json:"board_id"`
-	InviteeID string `json:"invitee_id"`
-	Role      string `json:"role"` // Must be "Member" or "Viewer"
+	BoardID   string `json:"board_id"`   // target board id
+	InviteeID string `json:"invitee_id"` // id of user who is going to be invited
+	Role      string `json:"role"`       // Must be "Member" or "Viewer"
 }
 
 // InviteResponse represents the response when an invitation is created.
 type InviteResponse struct {
-	InvitationID string `json:"invitation_id"`
+	InvitationID string `json:"invitation_id"` // invitation id
 }
 
 // InviteUser invites a user to a board, restricted to Admins only.
@@ -139,13 +139,13 @@ func InviteUser(ctx context.Context, p *InviteUserParams) (*InviteResponse, erro
 
 // HandleInvitationParams defines the input for accepting or rejecting an invitation.
 type HandleInvitationParams struct {
-	InvitationID string `json:"invitation_id"`
-	Action       string `json:"action"` // "accept" or "reject"
+	InvitationID string `json:"invitation_id"` // ID of the invitation
+	Action       string `json:"action"`        // "accept" or "reject"
 }
 
 // HandleInvitationResponse represents the response when an invitation is handled.
 type HandleInvitationResponse struct {
-	BoardID string `json:"board_id"`
+	BoardID string `json:"board_id"` // board id
 }
 
 // HandleInvitation allows the invitee to accept or reject an invitation.
@@ -245,11 +245,11 @@ func GetBoard(ctx context.Context, boardID string) (*BoardResponse, error) {
 
 // InvitationResponse represents a single invitation with board details.
 type InvitationResponse struct {
-	InvitationID string `json:"invitation_id"`
-	BoardID      string `json:"board_id"`
-	BoardName    string `json:"board_name"`
-	InviterID    string `json:"inviter_id"`
-	CreatedAt    string `json:"created_at"` // ISO 8601 string
+	InvitationID string `json:"invitation_id"` // invitation id
+	BoardID      string `json:"board_id"`      // board id
+	BoardName    string `json:"board_name"`    // name of the board
+	InviterID    string `json:"inviter_id"`    // id of board admin
+	CreatedAt    string `json:"created_at"`    // time of creating invitation
 }
 
 // ListInvitationsResponse represents a list of invitations for the authenticated user.
@@ -479,7 +479,7 @@ func ListBoardMembers(ctx context.Context, boardID string) (*ListBoardMembersRes
 
 // CheckMembershipResponse indicates whether a user is a member of a board and their role.
 type CheckMembershipResponse struct {
-	IsMember bool   `json:"is_member"`
+	IsMember bool   `json:"is_member"`      // true if member
 	Role     string `json:"role,omitempty"` // Empty if not a member
 }
 

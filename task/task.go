@@ -24,39 +24,42 @@ var taskDB = sqldb.NewDatabase("tasks", sqldb.DatabaseConfig{
 var _ = pubsub.NewSubscription(
 	board.BoardDeletedTopic, "delete-tasks-on-board-deletion",
 	pubsub.SubscriptionConfig[*board.BoardDeletedEvent]{
-		Handler: func(ctx context.Context, event *board.BoardDeletedEvent) error {
-			_, err := taskDB.Exec(ctx, `
-                DELETE FROM tasks
-                WHERE board_id = $1
-            `, event.BoardID)
-			if err != nil {
-				return errs.B().Code(errs.Internal).Msg("failed to delete tasks for board").Cause(err).Err()
-			}
-			return nil
-		},
+		Handler: handleBoardDeleteEvent,
 	},
 )
 
+// board-delete event handler
+func handleBoardDeleteEvent(ctx context.Context, event *board.BoardDeletedEvent) error {
+	_, err := taskDB.Exec(ctx, `
+		DELETE FROM tasks
+		WHERE board_id = $1
+	`, event.BoardID)
+	if err != nil {
+		return errs.B().Code(errs.Internal).Msg("failed to delete tasks for board").Cause(err).Err()
+	}
+	return nil
+}
+
 // CreateTaskParams defines the input parameters for creating a new task.
 type CreateTaskParams struct {
-	BoardID     string `json:"board_id"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-	AssigneeID  string `json:"assignee_id,omitempty"`
-	Stage       string `json:"stage,omitempty"`
+	BoardID     string `json:"board_id"`              // target board id
+	Title       string `json:"title"`                 // task title
+	Description string `json:"description,omitempty"` // task description (optional)
+	AssigneeID  string `json:"assignee_id,omitempty"` // user id of assignee (optional)
+	Stage       string `json:"stage,omitempty"`       // stage of the task only ('To Do' -- default, 'In Progress', 'Done') (optional)
 }
 
 // TaskResponse represents the response returned when a task is created or updated.
 type TaskResponse struct {
-	ID          string `json:"id"`
-	BoardID     string `json:"board_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	CreatedBy   string `json:"created_by"`
-	AssigneeID  string `json:"assignee_id,omitempty"`
-	Stage       string `json:"stage"`
-	CreatedAt   string `json:"created_at"` // ISO 8601 string
-	UpdatedAt   string `json:"updated_at"` // ISO 8601 string
+	ID          string `json:"id"`                    // task id
+	BoardID     string `json:"board_id"`              // target board id
+	Title       string `json:"title"`                 // task title
+	Description string `json:"description,omitempty"` // task description
+	CreatedBy   string `json:"created_by"`            // owner id
+	AssigneeID  string `json:"assignee_id,omitempty"` // user id of assignee
+	Stage       string `json:"stage,omitempty"`       // task stage
+	CreatedAt   string `json:"created_at"`            // time of task creation
+	UpdatedAt   string `json:"updated_at,omitempty"`  // time of last updation
 }
 
 // CreateTask creates a new task on a board, restricted to Admins and Members.
@@ -111,16 +114,15 @@ func CreateTask(ctx context.Context, p *CreateTaskParams) (*TaskResponse, error)
 		AssigneeID:  p.AssigneeID,
 		Stage:       stage,
 		CreatedAt:   now,
-		UpdatedAt:   now,
 	}, nil
 }
 
 // UpdateTaskParams defines the input parameters for updating an existing task.
 type UpdateTaskParams struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	AssigneeID  string `json:"assignee_id,omitempty"`
-	Stage       string `json:"stage,omitempty"`
+	Title       string `json:"title,omitempty"`       // new title
+	Description string `json:"description,omitempty"` // new description
+	AssigneeID  string `json:"assignee_id,omitempty"` // new assigned user id
+	Stage       string `json:"stage,omitempty"`       // new stage of the task
 }
 
 // UpdateTask updates an existing task, restricted to Admins or the task creator.
@@ -209,7 +211,7 @@ type ListTasksParams struct {
 
 // ListTasksResponse represents a paginated list of tasks for a board.
 type ListTasksResponse struct {
-	Tasks []TaskResponse `json:"tasks"`
+	Tasks []TaskResponse `json:"tasks"` // List of tasks
 	Total int            `json:"total"` // Total number of matching tasks
 }
 

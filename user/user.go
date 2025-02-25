@@ -21,8 +21,8 @@ var userDB = sqldb.NewDatabase("users", sqldb.DatabaseConfig{
 
 // SignupParams defines the input parameters for user signup.
 type SignupParams struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email"`    // user email
+	Password string `json:"password"` // user password
 }
 
 // SignupResponse represents the response returned when a user signs up successfully.
@@ -62,8 +62,8 @@ func Signup(ctx context.Context, p *SignupParams) (*SignupResponse, error) {
 
 // LoginParams defines the input parameters for user login.
 type LoginParams struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email"`    // user email
+	Password string `json:"password"` // user password
 }
 
 // LoginResponse represents the response returned when a user logs in, containing a JWT token.
